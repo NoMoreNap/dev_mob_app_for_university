@@ -4,6 +4,10 @@ plugins {
 
 android {
     namespace = "com.example.app"
+
+    buildFeatures {
+        viewBinding = true
+    }
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -46,4 +50,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.airbnb.android:lottie:6.7.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 }

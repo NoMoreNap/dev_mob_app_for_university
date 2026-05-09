@@ -1,60 +1,66 @@
 package com.example.app
 
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import androidx.activity.enableEdgeToEdge
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.bumptech.glide.Glide
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.app.databinding.ActivityMainBinding
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONArray
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
-    private var isAboutVisible = false
+
+    private lateinit var binding: ActivityMainBinding
+    private val client = OkHttpClient()
+    private val baseUrl = "http://10.0.2.2:3001"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val bgImage = findViewById<ImageView>(R.id.bgImage)
-        val button = findViewById<Button>(R.id.button)
-        val overlay = findViewById<View>(R.id.blurOverlay)
-        val modal = findViewById<LinearLayout>(R.id.aboutModal)
+        binding.rvUsers.layoutManager = LinearLayoutManager(this)
 
-        Glide.with(this)
-            .load("https://s3.slaves.pro/misc/lab_background.png")
-            .into(bgImage)
+        loadUsers()
+    }
 
-        button.setOnClickListener {
-            isAboutVisible = !isAboutVisible
+    private fun loadUsers() {
+        val request = Request.Builder()
+            .url("$baseUrl/users")
+            .get()
+            .build()
 
-            if (isAboutVisible) {
-                overlay.visibility = View.VISIBLE
-                modal.visibility = View.VISIBLE
+        thread {
+            try {
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "[]"
+                val jsonArray = JSONArray(responseBody)
+                val users = mutableListOf<User>()
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    bgImage.setRenderEffect(
-                        RenderEffect.createBlurEffect(18f, 18f, Shader.TileMode.CLAMP)
+                for (i in 0 until jsonArray.length()) {
+                    val item = jsonArray.getJSONObject(i)
+
+                    users.add(
+                        User(
+                            email = item.getString("email"),
+                            course = item.getInt("course")
+                        )
                     )
                 }
-            } else {
-                overlay.visibility = View.GONE
-                modal.visibility = View.GONE
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    bgImage.setRenderEffect(null)
+                runOnUiThread {
+                    binding.rvUsers.adapter = UserAdapter(users)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "Ошибка загрузки пользователей: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
